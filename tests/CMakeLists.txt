@@ -1,0 +1,7 @@
+function(cdsa_add_test name)
+    add_executable(${name} ${name}.c)
+    target_link_libraries(${name} PRIVATE cdsa cdsa_warnings cdsa_sanitize)
+    add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+cdsa_add_test(test_build_smoke)

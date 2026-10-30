@@ -3,7 +3,7 @@
 One task ≈ one day. The agent takes the first unchecked item.
 
 ## Phase 0 — Foundations
-- [ ] CMake project (C11, warnings-as-errors, CDSA_SANITIZE option), `.clang-format`, `.clang-tidy`, `.gitignore`
+- [x] CMake project (C11, warnings-as-errors, CDSA_SANITIZE option), `.clang-format`, `.clang-tidy`, `.gitignore`
 - [ ] `cdsa_status_t` error codes + `cdsa_strerror`, `cdsa_alloc.h` allocator hooks with a failing-allocator test helper
 - [ ] Minimal test framework `tests/check.h` (assert macros, test registration, TAP-like output) + a self-test
 - [ ] Common callbacks header: `cdsa_cmp_fn`, `cdsa_hash_fn`, `cdsa_free_fn`, `cdsa_copy_fn`, plus default int/str/ptr helpers

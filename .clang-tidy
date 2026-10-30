@@ -1,0 +1,28 @@
+---
+# Checks that apply to all C source files in src/
+Checks: >
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  bugprone-*,
+  cert-*,
+  performance-*,
+  portability-*,
+  readability-braces-around-statements,
+  readability-inconsistent-declaration-parameter-name,
+  readability-misleading-indentation,
+  readability-misplaced-array-index,
+  readability-redundant-preprocessor,
+  -bugprone-easily-swappable-parameters,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp
+
+WarningsAsErrors: '*'
+
+CheckOptions:
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '0'
+
+HeaderFilterRegex: '^include/cdsa/.*\.h$'
+
+FormatStyle: file
+...

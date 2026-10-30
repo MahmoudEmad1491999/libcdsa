@@ -1,6 +1,44 @@
+# Build artifacts
 build/
-.agent/
 *.o
 *.a
+*.so
+*.so.*
+*.dylib
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+
+# compile_commands.json lives in build/ subdirs; the root symlink is optional
 compile_commands.json
+
+# Doxygen output
 docs/html/
+docs/xml/
+docs/latex/
+
+# Coverage reports
+*.gcda
+*.gcno
+*.gcov
+lcov.info
+coverage/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Agent working files
+.agent/
+
+# Fuzz corpora and artifacts (added in Phase 9)
+fuzz_*/
