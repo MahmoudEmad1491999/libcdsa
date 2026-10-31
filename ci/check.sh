@@ -31,4 +31,13 @@ if command -v clang-tidy >/dev/null && [ -f .clang-tidy ] && [ -d src ]; then
   echo "== clang-tidy =="
   clang-tidy -p build/rel --quiet src/*.c
 fi
+
+if command -v doxygen >/dev/null && [ -f docs/Doxyfile.in ]; then
+  echo "== Doxygen docs =="
+  cmake --build build/rel --target docs
+fi
+
+echo "== Module table =="
+python3 scripts/gen_module_table.py --check
+
 echo "ALL CHECKS PASSED"

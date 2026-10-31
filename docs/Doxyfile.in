@@ -1,0 +1,45 @@
+# Doxyfile.in — processed by CMake configure_file(@ONLY) before use.
+# Build the docs target: cmake --build <build-dir> --target docs
+
+PROJECT_NAME           = "libcdsa"
+PROJECT_NUMBER         = @PROJECT_VERSION@
+PROJECT_BRIEF          = "Generic data structures and algorithms in C11"
+
+OUTPUT_DIRECTORY       = @CMAKE_CURRENT_SOURCE_DIR@/docs
+CREATE_SUBDIRS         = NO
+
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+
+INPUT                  = @CMAKE_CURRENT_SOURCE_DIR@/include
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h
+EXCLUDE_PATTERNS       =
+
+EXTRACT_ALL            = NO
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = NO
+HIDE_UNDOC_MEMBERS     = YES
+
+JAVADOC_AUTOBRIEF      = NO
+OPTIMIZE_OUTPUT_FOR_C  = YES
+TYPEDEF_HIDES_STRUCT   = YES
+
+# @complexity is a project-specific shorthand; map it to a named paragraph.
+# ^^ is the Doxygen-alias newline escape: \par reads to EOL as the title, then
+# the text that follows the alias on the original line becomes the paragraph body.
+ALIASES                = "complexity=\par Complexity^^"
+
+SORT_MEMBER_DOCS       = NO
+SHOW_INCLUDE_FILES     = YES
+VERBATIM_HEADERS       = YES
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+GENERATE_MAN           = NO
+GENERATE_RTF           = NO

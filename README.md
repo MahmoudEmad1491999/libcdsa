@@ -12,7 +12,12 @@ cmake -S . -B build && cmake --build build && ctest --test-dir build
 ```
 
 ## Modules
-_Filled in as modules land._
+
+| Module | Description |
+|--------|-------------|
+| [`cdsa_alloc`](include/cdsa/cdsa_alloc.h) | Process-wide allocator hook and internal allocation wrappers. |
+| [`cdsa_callbacks`](include/cdsa/cdsa_callbacks.h) | Common callback typedefs and built-in default implementations. |
+| [`cdsa_status`](include/cdsa/cdsa_status.h) | Error codes returned by all fallible cdsa functions. |
 
 ## License
 MIT

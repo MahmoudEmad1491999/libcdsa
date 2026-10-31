@@ -7,7 +7,7 @@ One task ≈ one day. The agent takes the first unchecked item.
 - [x] `cdsa_status_t` error codes + `cdsa_strerror`, `cdsa_alloc.h` allocator hooks with a failing-allocator test helper
 - [x] Minimal test framework `tests/check.h` (assert macros, test registration, TAP-like output) + a self-test
 - [x] Common callbacks header: `cdsa_cmp_fn`, `cdsa_hash_fn`, `cdsa_free_fn`, `cdsa_copy_fn`, plus default int/str/ptr helpers
-- [ ] Doxygen config + `docs` CMake target; README module table generator script
+- [x] Doxygen config + `docs` CMake target; README module table generator script
 
 ## Phase 1 — Sequences
 - [ ] Dynamic array (vector): create/destroy/push/pop/get/set, geometric growth
