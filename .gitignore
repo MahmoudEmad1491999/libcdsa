@@ -42,3 +42,6 @@ coverage/
 
 # Fuzz corpora and artifacts (added in Phase 9)
 fuzz_*/
+
+# AI Assistence MARKDOWN
+CLAUDE.md
