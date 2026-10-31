@@ -5,3 +5,5 @@ function(cdsa_add_test name)
 endfunction()
 
 cdsa_add_test(test_build_smoke)
+cdsa_add_test(test_status)
+cdsa_add_test(test_alloc)

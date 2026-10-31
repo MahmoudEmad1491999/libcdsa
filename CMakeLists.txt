@@ -37,6 +37,8 @@ endif()
 add_library(cdsa STATIC)
 target_sources(cdsa PRIVATE
     src/cdsa_placeholder.c
+    src/cdsa_status.c
+    src/cdsa_alloc.c
 )
 target_include_directories(cdsa PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
