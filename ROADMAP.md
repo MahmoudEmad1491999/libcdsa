@@ -11,7 +11,7 @@ One task ≈ one day. The agent takes the first unchecked item.
 
 ## Phase 1 — Sequences
 - [x] Dynamic array (vector): create/destroy/push/pop/get/set, geometric growth
-- [ ] Vector: insert/erase at index, reserve, shrink_to_fit, clear
+- [x] Vector: insert/erase at index, reserve, shrink_to_fit, clear
 - [ ] Vector: iteration API, foreach macro, swap, reverse
 - [ ] Vector: randomized differential test against a plain C array reference
 - [ ] Singly linked list with sentinel: push/pop front/back, find, remove

@@ -135,4 +135,83 @@ size_t cdsa_vec_len(const cdsa_vec_t *v);
  */
 size_t cdsa_vec_cap(const cdsa_vec_t *v);
 
+/**
+ * @brief Insert a copy of @p elem at position @p index, shifting later elements
+ *        right by one.
+ *
+ * Valid indices are [0, len]: inserting at @p index == len is equivalent to a
+ * push_back.  If the vector is full, the buffer is reallocated with the same
+ * doubling policy as push_back; on failure the vector is left unchanged.
+ *
+ * @param v      Target vector.  Must not be NULL.
+ * @param index  Insertion point (0-based).  Must be <= len.
+ * @param elem   Source buffer of at least elem_size bytes.  Must not be NULL.
+ * @return       CDSA_OK on success; CDSA_ERR_INVAL if v or elem is NULL;
+ *               CDSA_ERR_RANGE if index > len;
+ *               CDSA_ERR_NOMEM if reallocation fails.
+ * @complexity   O(n) time (shift); O(1) amortised space.
+ */
+cdsa_status_t cdsa_vec_insert(cdsa_vec_t *v, size_t index, const void *elem);
+
+/**
+ * @brief Remove the element at @p index, shifting later elements left by one.
+ *
+ * If @p out is non-NULL, elem_size bytes are copied into @p out and free_fn
+ * is NOT called (the caller takes ownership).  If @p out is NULL and free_fn
+ * was provided, free_fn is called on the removed element.
+ *
+ * @param v      Source vector.  Must not be NULL.
+ * @param index  Zero-based index of the element to remove.
+ * @param out    Destination buffer of at least elem_size bytes, or NULL.
+ * @return       CDSA_OK on success; CDSA_ERR_INVAL if v is NULL;
+ *               CDSA_ERR_RANGE if index >= len (including the empty case).
+ * @complexity   O(n) time (shift).
+ */
+cdsa_status_t cdsa_vec_erase(cdsa_vec_t *v, size_t index, void *out);
+
+/**
+ * @brief Ensure the vector can hold at least @p min_cap elements without
+ *        reallocation.
+ *
+ * If the current capacity is already >= @p min_cap this is a no-op.
+ * Otherwise the buffer is reallocated to exactly @p min_cap elements.
+ * On failure the vector is left unchanged.
+ *
+ * @param v        Target vector.  Must not be NULL.
+ * @param min_cap  Required minimum capacity in elements.
+ * @return         CDSA_OK on success; CDSA_ERR_INVAL if v is NULL;
+ *                 CDSA_ERR_NOMEM if reallocation fails or min_cap would
+ *                 overflow size_t when multiplied by elem_size.
+ * @complexity     O(n) on reallocation; O(1) if already sufficient.
+ */
+cdsa_status_t cdsa_vec_reserve(cdsa_vec_t *v, size_t min_cap);
+
+/**
+ * @brief Reduce the capacity to exactly @p len, releasing unused memory.
+ *
+ * If len == cap, this is a no-op.  If len == 0 the data buffer is freed
+ * entirely and cap becomes 0.  On reallocation failure the vector is left
+ * unchanged and CDSA_ERR_NOMEM is returned.
+ *
+ * @param v  Target vector.  Must not be NULL.
+ * @return   CDSA_OK on success; CDSA_ERR_INVAL if v is NULL;
+ *           CDSA_ERR_NOMEM if reallocation fails.
+ * @complexity O(n) on reallocation; O(1) if already minimal.
+ */
+cdsa_status_t cdsa_vec_shrink_to_fit(cdsa_vec_t *v);
+
+/**
+ * @brief Remove all elements without releasing the internal buffer.
+ *
+ * If free_fn was provided at creation time, it is called on every element
+ * before the length is reset to zero.  The capacity is preserved so that
+ * subsequent pushes do not reallocate.
+ *
+ * Passing NULL is a no-op.
+ *
+ * @param v  Target vector, or NULL.
+ * @complexity O(n) if free_fn != NULL; O(1) otherwise.
+ */
+void cdsa_vec_clear(cdsa_vec_t *v);
+
 #endif /* CDSA_VEC_H */
