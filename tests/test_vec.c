@@ -897,6 +897,374 @@ static void test_clear_then_push(void)
     cdsa_vec_destroy(v);
 }
 
+/* ── cdsa_vec_data ───────────────────────────────────────────────────────── */
+
+static void test_data_null_vec(void)
+{
+    CHECK_NULL(cdsa_vec_data(NULL));
+}
+
+static void test_data_empty_no_reserve(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    /* No push or reserve yet — buffer is not allocated. */
+    CHECK_NULL(cdsa_vec_data(v));
+    cdsa_vec_destroy(v);
+}
+
+static void test_data_after_push(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int val = 42;
+    CHECK_EQ(cdsa_vec_push(v, &val), CDSA_OK);
+    CHECK_NOTNULL(cdsa_vec_data(v));
+    CHECK_EQ(*(int *)cdsa_vec_data(v), 42);
+    cdsa_vec_destroy(v);
+}
+
+static void test_data_pointer_arithmetic(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 0; i < 5; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    int *raw = (int *)cdsa_vec_data(v);
+    CHECK_NOTNULL(raw);
+    for (int i = 0; i < 5; ++i) {
+        CHECK_EQ(raw[i], i);
+    }
+    cdsa_vec_destroy(v);
+}
+
+/* ── cdsa_vec_elem_size ──────────────────────────────────────────────────── */
+
+static void test_elem_size_null(void)
+{
+    CHECK_EQ(cdsa_vec_elem_size(NULL), (size_t)0);
+}
+
+static void test_elem_size_basic(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(double), NULL, &v), CDSA_OK);
+    CHECK_EQ(cdsa_vec_elem_size(v), sizeof(double));
+    cdsa_vec_destroy(v);
+}
+
+/* ── CDSA_VEC_FOREACH ────────────────────────────────────────────────────── */
+
+static void test_foreach_empty(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int iterations = 0;
+    void *p = NULL;
+    CDSA_VEC_FOREACH(v, p) {
+        ++iterations;
+    }
+    CHECK_EQ(iterations, 0);
+    cdsa_vec_destroy(v);
+}
+
+static void test_foreach_single(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int val = 99;
+    CHECK_EQ(cdsa_vec_push(v, &val), CDSA_OK);
+    int iterations = 0;
+    int seen = 0;
+    void *p = NULL;
+    CDSA_VEC_FOREACH(v, p) {
+        seen = *(int *)p;
+        ++iterations;
+    }
+    CHECK_EQ(iterations, 1);
+    CHECK_EQ(seen, 99);
+    cdsa_vec_destroy(v);
+}
+
+static void test_foreach_multiple_in_order(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 0; i < 8; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    int expected = 0;
+    void *p = NULL;
+    CDSA_VEC_FOREACH(v, p) {
+        CHECK_EQ(*(int *)p, expected);
+        ++expected;
+    }
+    CHECK_EQ(expected, 8);
+    cdsa_vec_destroy(v);
+}
+
+static void test_foreach_break(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 0; i < 5; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    int count = 0;
+    void *p = NULL;
+    CDSA_VEC_FOREACH(v, p) {
+        ++count;
+        if (*(int *)p == 2) {
+            break;
+        }
+    }
+    CHECK_EQ(count, 3);  /* stopped after seeing 0, 1, 2 */
+    cdsa_vec_destroy(v);
+}
+
+static void test_foreach_mutation_via_ptr(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 0; i < 4; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    void *p = NULL;
+    CDSA_VEC_FOREACH(v, p) {
+        *(int *)p *= 2;
+    }
+    void *q = NULL;
+    for (int i = 0; i < 4; ++i) {
+        CHECK_EQ(cdsa_vec_get(v, (size_t)i, &q), CDSA_OK);
+        CHECK_EQ(*(int *)q, i * 2);
+    }
+    cdsa_vec_destroy(v);
+}
+
+/* ── cdsa_vec_swap ───────────────────────────────────────────────────────── */
+
+static void test_swap_null_vec(void)
+{
+    CHECK_EQ(cdsa_vec_swap(NULL, 0, 1), CDSA_ERR_INVAL);
+}
+
+static void test_swap_empty(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    CHECK_EQ(cdsa_vec_swap(v, 0, 0), CDSA_ERR_RANGE);
+    cdsa_vec_destroy(v);
+}
+
+static void test_swap_i_out_of_range(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int val = 1;
+    CHECK_EQ(cdsa_vec_push(v, &val), CDSA_OK);
+    CHECK_EQ(cdsa_vec_swap(v, 1, 0), CDSA_ERR_RANGE);
+    cdsa_vec_destroy(v);
+}
+
+static void test_swap_j_out_of_range(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int val = 1;
+    CHECK_EQ(cdsa_vec_push(v, &val), CDSA_OK);
+    CHECK_EQ(cdsa_vec_swap(v, 0, 1), CDSA_ERR_RANGE);
+    cdsa_vec_destroy(v);
+}
+
+static void test_swap_same_index(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int val = 7;
+    CHECK_EQ(cdsa_vec_push(v, &val), CDSA_OK);
+    CHECK_EQ(cdsa_vec_swap(v, 0, 0), CDSA_OK);
+    void *p = NULL;
+    CHECK_EQ(cdsa_vec_get(v, 0, &p), CDSA_OK);
+    CHECK_EQ(*(int *)p, 7);
+    cdsa_vec_destroy(v);
+}
+
+static void test_swap_first_last(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 1; i <= 5; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    CHECK_EQ(cdsa_vec_swap(v, 0, 4), CDSA_OK);
+    void *p = NULL;
+    CHECK_EQ(cdsa_vec_get(v, 0, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 5);
+    CHECK_EQ(cdsa_vec_get(v, 4, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 1);
+    /* Middle elements unchanged. */
+    CHECK_EQ(cdsa_vec_get(v, 1, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 2);
+    CHECK_EQ(cdsa_vec_get(v, 2, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 3);
+    CHECK_EQ(cdsa_vec_get(v, 3, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 4);
+    cdsa_vec_destroy(v);
+}
+
+static void test_swap_adjacent(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int a = 10, b = 20;
+    CHECK_EQ(cdsa_vec_push(v, &a), CDSA_OK);
+    CHECK_EQ(cdsa_vec_push(v, &b), CDSA_OK);
+    CHECK_EQ(cdsa_vec_swap(v, 0, 1), CDSA_OK);
+    void *p = NULL;
+    CHECK_EQ(cdsa_vec_get(v, 0, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 20);
+    CHECK_EQ(cdsa_vec_get(v, 1, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 10);
+    cdsa_vec_destroy(v);
+}
+
+static void test_swap_alloc_failure(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int a = 1, b = 2;
+    CHECK_EQ(cdsa_vec_push(v, &a), CDSA_OK);
+    CHECK_EQ(cdsa_vec_push(v, &b), CDSA_OK);
+
+    cdsa_alloc_fail_after(1);
+    CHECK_EQ(cdsa_vec_swap(v, 0, 1), CDSA_ERR_NOMEM);
+
+    /* Elements must be unchanged. */
+    void *p = NULL;
+    CHECK_EQ(cdsa_vec_get(v, 0, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 1);
+    CHECK_EQ(cdsa_vec_get(v, 1, &p), CDSA_OK);  CHECK_EQ(*(int *)p, 2);
+    reset();
+
+    cdsa_vec_destroy(v);
+}
+
+/* ── cdsa_vec_reverse ────────────────────────────────────────────────────── */
+
+static void test_reverse_null_vec(void)
+{
+    CHECK_EQ(cdsa_vec_reverse(NULL), CDSA_ERR_INVAL);
+}
+
+static void test_reverse_empty(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+    CHECK_EQ(cdsa_vec_len(v), (size_t)0);
+    cdsa_vec_destroy(v);
+}
+
+static void test_reverse_single(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    int val = 42;
+    CHECK_EQ(cdsa_vec_push(v, &val), CDSA_OK);
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+    void *p = NULL;
+    CHECK_EQ(cdsa_vec_get(v, 0, &p), CDSA_OK);
+    CHECK_EQ(*(int *)p, 42);
+    cdsa_vec_destroy(v);
+}
+
+static void test_reverse_even(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 1; i <= 4; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+    CHECK_EQ(cdsa_vec_len(v), (size_t)4);
+    int expected[4] = {4, 3, 2, 1};
+    void *p = NULL;
+    for (int i = 0; i < 4; ++i) {
+        CHECK_EQ(cdsa_vec_get(v, (size_t)i, &p), CDSA_OK);
+        CHECK_EQ(*(int *)p, expected[i]);
+    }
+    cdsa_vec_destroy(v);
+}
+
+static void test_reverse_odd(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 1; i <= 5; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+    int expected[5] = {5, 4, 3, 2, 1};
+    void *p = NULL;
+    for (int i = 0; i < 5; ++i) {
+        CHECK_EQ(cdsa_vec_get(v, (size_t)i, &p), CDSA_OK);
+        CHECK_EQ(*(int *)p, expected[i]);
+    }
+    cdsa_vec_destroy(v);
+}
+
+static void test_reverse_twice_is_identity(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 0; i < 7; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+    void *p = NULL;
+    for (int i = 0; i < 7; ++i) {
+        CHECK_EQ(cdsa_vec_get(v, (size_t)i, &p), CDSA_OK);
+        CHECK_EQ(*(int *)p, i);
+    }
+    cdsa_vec_destroy(v);
+}
+
+static void test_reverse_large_elem_size(void)
+{
+    typedef struct { long x; long y; long z; } triple_t;
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(triple_t), NULL, &v), CDSA_OK);
+    triple_t items[3] = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+    for (int i = 0; i < 3; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &items[i]), CDSA_OK);
+    }
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+    void *p = NULL;
+    CHECK_EQ(cdsa_vec_get(v, 0, &p), CDSA_OK);
+    CHECK_EQ(((triple_t *)p)->x, 7L);
+    CHECK_EQ(cdsa_vec_get(v, 1, &p), CDSA_OK);
+    CHECK_EQ(((triple_t *)p)->x, 4L);
+    CHECK_EQ(cdsa_vec_get(v, 2, &p), CDSA_OK);
+    CHECK_EQ(((triple_t *)p)->x, 1L);
+    cdsa_vec_destroy(v);
+}
+
+static void test_reverse_alloc_failure(void)
+{
+    cdsa_vec_t *v = NULL;
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    for (int i = 0; i < 4; ++i) {
+        CHECK_EQ(cdsa_vec_push(v, &i), CDSA_OK);
+    }
+
+    cdsa_alloc_fail_after(1);
+    CHECK_EQ(cdsa_vec_reverse(v), CDSA_ERR_NOMEM);
+
+    /* Vector must be completely unchanged. */
+    void *p = NULL;
+    for (int i = 0; i < 4; ++i) {
+        CHECK_EQ(cdsa_vec_get(v, (size_t)i, &p), CDSA_OK);
+        CHECK_EQ(*(int *)p, i);
+    }
+    reset();
+
+    cdsa_vec_destroy(v);
+}
+
 /* ── Test registry ───────────────────────────────────────────────────────── */
 
 static const cdsa_test_entry_t tests[] = {
@@ -980,6 +1348,38 @@ static const cdsa_test_entry_t tests[] = {
     CDSA_T(test_clear_calls_free_fn),
     CDSA_T(test_clear_null_vec),
     CDSA_T(test_clear_then_push),
+    /* data */
+    CDSA_T(test_data_null_vec),
+    CDSA_T(test_data_empty_no_reserve),
+    CDSA_T(test_data_after_push),
+    CDSA_T(test_data_pointer_arithmetic),
+    /* elem_size */
+    CDSA_T(test_elem_size_null),
+    CDSA_T(test_elem_size_basic),
+    /* foreach */
+    CDSA_T(test_foreach_empty),
+    CDSA_T(test_foreach_single),
+    CDSA_T(test_foreach_multiple_in_order),
+    CDSA_T(test_foreach_break),
+    CDSA_T(test_foreach_mutation_via_ptr),
+    /* swap */
+    CDSA_T(test_swap_null_vec),
+    CDSA_T(test_swap_empty),
+    CDSA_T(test_swap_i_out_of_range),
+    CDSA_T(test_swap_j_out_of_range),
+    CDSA_T(test_swap_same_index),
+    CDSA_T(test_swap_first_last),
+    CDSA_T(test_swap_adjacent),
+    CDSA_T(test_swap_alloc_failure),
+    /* reverse */
+    CDSA_T(test_reverse_null_vec),
+    CDSA_T(test_reverse_empty),
+    CDSA_T(test_reverse_single),
+    CDSA_T(test_reverse_even),
+    CDSA_T(test_reverse_odd),
+    CDSA_T(test_reverse_twice_is_identity),
+    CDSA_T(test_reverse_large_elem_size),
+    CDSA_T(test_reverse_alloc_failure),
 };
 
 int main(void)

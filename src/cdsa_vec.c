@@ -277,3 +277,67 @@ void cdsa_vec_clear(cdsa_vec_t *v)
 
     v->len = 0u;
 }
+
+void *cdsa_vec_data(cdsa_vec_t *v)
+{
+    return (v != NULL) ? v->data : NULL;
+}
+
+size_t cdsa_vec_elem_size(const cdsa_vec_t *v)
+{
+    return (v != NULL) ? v->elem_size : 0u;
+}
+
+cdsa_status_t cdsa_vec_swap(cdsa_vec_t *v, size_t i, size_t j)
+{
+    if (v == NULL) {
+        return CDSA_ERR_INVAL;
+    }
+    if (i >= v->len || j >= v->len) {
+        return CDSA_ERR_RANGE;
+    }
+    if (i == j) {
+        return CDSA_OK;
+    }
+
+    void *tmp = cdsa_malloc(v->elem_size);
+    if (tmp == NULL) {
+        return CDSA_ERR_NOMEM;
+    }
+
+    char *a = (char *)v->data + i * v->elem_size;
+    char *b = (char *)v->data + j * v->elem_size;
+
+    memcpy(tmp, a, v->elem_size);
+    memcpy(a,   b, v->elem_size);
+    memcpy(b, tmp, v->elem_size);
+
+    cdsa_free(tmp);
+    return CDSA_OK;
+}
+
+cdsa_status_t cdsa_vec_reverse(cdsa_vec_t *v)
+{
+    if (v == NULL) {
+        return CDSA_ERR_INVAL;
+    }
+    if (v->len <= 1u) {
+        return CDSA_OK;
+    }
+
+    void *tmp = cdsa_malloc(v->elem_size);
+    if (tmp == NULL) {
+        return CDSA_ERR_NOMEM;
+    }
+
+    for (size_t lo = 0u, hi = v->len - 1u; lo < hi; lo++, hi--) {
+        char *a = (char *)v->data + lo * v->elem_size;
+        char *b = (char *)v->data + hi * v->elem_size;
+        memcpy(tmp, a, v->elem_size);
+        memcpy(a,   b, v->elem_size);
+        memcpy(b, tmp, v->elem_size);
+    }
+
+    cdsa_free(tmp);
+    return CDSA_OK;
+}

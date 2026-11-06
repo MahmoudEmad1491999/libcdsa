@@ -214,4 +214,105 @@ cdsa_status_t cdsa_vec_shrink_to_fit(cdsa_vec_t *v);
  */
 void cdsa_vec_clear(cdsa_vec_t *v);
 
+/* ── Iteration, swap, reverse ─────────────────────────────────────────────── */
+
+/**
+ * @brief Return a pointer to the first element of the internal buffer.
+ *
+ * Returns NULL when @p v is NULL or when no buffer has been allocated yet
+ * (empty vector that has never been push'd or reserve'd).  The pointer is
+ * invalidated by any operation that may reallocate the buffer (push, insert,
+ * reserve).  Callers are responsible for staying within [0, len) bounds.
+ *
+ * Useful for passing the buffer to @c qsort / @c bsearch, or for fast
+ * index-based loops when bounds are already known.
+ *
+ * @param v  Source vector, or NULL.
+ * @return   Pointer to the first element slot, or NULL.
+ * @complexity O(1) time.
+ */
+void *cdsa_vec_data(cdsa_vec_t *v);
+
+/**
+ * @brief Return the size in bytes of one element stored in the vector.
+ *
+ * @param v  Source vector (NULL returns 0).
+ * @return   Element size in bytes, or 0 if @p v is NULL.
+ * @complexity O(1) time.
+ */
+size_t cdsa_vec_elem_size(const cdsa_vec_t *v);
+
+/**
+ * @brief Swap the elements at indices @p i and @p j in-place.
+ *
+ * A temporary allocation of elem_size bytes is made; on failure the vector
+ * is left unchanged.  Swapping an index with itself (@p i == @p j) is a
+ * no-op and returns CDSA_OK without allocating.
+ *
+ * @param v  Target vector.  Must not be NULL.
+ * @param i  First element index (0-based, must be < len).
+ * @param j  Second element index (0-based, must be < len).
+ * @return   CDSA_OK on success; CDSA_ERR_INVAL if @p v is NULL;
+ *           CDSA_ERR_RANGE if @p i or @p j >= len;
+ *           CDSA_ERR_NOMEM if the temporary buffer allocation fails.
+ * @complexity O(elem_size) time; O(elem_size) auxiliary space.
+ */
+cdsa_status_t cdsa_vec_swap(cdsa_vec_t *v, size_t i, size_t j);
+
+/**
+ * @brief Reverse all elements in the vector in-place.
+ *
+ * A single temporary allocation of elem_size bytes is made; on failure the
+ * vector is left completely unchanged.  An empty or single-element vector is
+ * a no-op and returns CDSA_OK without allocating.
+ *
+ * @param v  Target vector.  Must not be NULL.
+ * @return   CDSA_OK on success; CDSA_ERR_INVAL if @p v is NULL;
+ *           CDSA_ERR_NOMEM if the temporary buffer allocation fails.
+ * @complexity O(n) time; O(elem_size) auxiliary space.
+ */
+cdsa_status_t cdsa_vec_reverse(cdsa_vec_t *v);
+
+/* ── Iteration macro ──────────────────────────────────────────────────────── */
+
+/**
+ * @brief Token-pasting helpers that produce unique identifiers per call site.
+ * @internal
+ */
+#ifndef CDSA_CONCAT_
+#  define CDSA_CONCAT_IMPL_(a_, b_) a_##b_
+#  define CDSA_CONCAT_(a_, b_)      CDSA_CONCAT_IMPL_(a_, b_)
+#endif
+
+/**
+ * @brief Iterate over every element of a vector front-to-back.
+ *
+ * @p ptr_ is set to a @c void* pointing directly into the vector's internal
+ * buffer before each loop body execution.  Declare @p ptr_ as @c void* in
+ * the enclosing scope before using this macro.
+ *
+ * Example:
+ * @code
+ *   void *p;
+ *   CDSA_VEC_FOREACH(v, p) {
+ *       printf("%d\n", *(int *)p);
+ *   }
+ * @endcode
+ *
+ * @p v_ must be a plain variable (not an expression with side-effects); it is
+ * evaluated more than once per iteration.  Modifying the vector (push, insert,
+ * erase, …) during iteration invalidates the internal buffer and produces
+ * undefined behaviour.  @c break and @c continue work as expected.
+ *
+ * @param v_    @c cdsa_vec_t* to iterate over.
+ * @param ptr_  @c void* lvalue that receives a pointer to the current element.
+ * @complexity  O(1) per element; O(n) for a complete traversal.
+ */
+#define CDSA_VEC_FOREACH(v_, ptr_)                                             \
+    for (size_t CDSA_CONCAT_(cdsa_fi_, __LINE__) = 0u;                        \
+         CDSA_CONCAT_(cdsa_fi_, __LINE__) < cdsa_vec_len(v_) &&               \
+             (cdsa_vec_get((v_), CDSA_CONCAT_(cdsa_fi_, __LINE__), &(ptr_))   \
+                  == CDSA_OK);                                                 \
+         CDSA_CONCAT_(cdsa_fi_, __LINE__)++)
+
 #endif /* CDSA_VEC_H */
