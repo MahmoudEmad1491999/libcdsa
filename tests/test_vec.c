@@ -4,6 +4,7 @@
 #include "cdsa/cdsa_status.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -1265,6 +1266,194 @@ static void test_reverse_alloc_failure(void)
     cdsa_vec_destroy(v);
 }
 
+/* ── Randomized differential test ─────────────────────────────────────────── */
+
+/* Maximum number of elements in the reference array.  Kept small so the
+ * test runs quickly even under ASan/Valgrind, while still exercising all
+ * operations and growth triggers. */
+#define RTEST_MAX_ELEMS 128
+/* Number of random operations to apply per test run. */
+#define RTEST_OPS       2000
+
+/* Numerical Recipes LCG (mod 2^32) with a fixed seed for reproducibility. */
+static uint32_t g_rng_state = 0u;
+
+static uint32_t rng_next(void)
+{
+    g_rng_state = (uint32_t)(g_rng_state * UINT32_C(1664525) +
+                             UINT32_C(1013904223));
+    return g_rng_state;
+}
+
+/* Plain C array acting as the reference implementation. */
+typedef struct {
+    int    data[RTEST_MAX_ELEMS];
+    size_t len;
+} rtest_ref_t;
+
+static void ref_push(rtest_ref_t *r, int val)
+{
+    r->data[r->len] = val;
+    ++r->len;
+}
+
+static void ref_pop(rtest_ref_t *r)
+{
+    --r->len;
+}
+
+static void ref_insert(rtest_ref_t *r, size_t idx, int val)
+{
+    size_t tail = r->len - idx;
+    if (tail > 0u) {
+        memmove(&r->data[idx + 1u], &r->data[idx], tail * sizeof(int));
+    }
+    r->data[idx] = val;
+    ++r->len;
+}
+
+static void ref_erase(rtest_ref_t *r, size_t idx)
+{
+    size_t tail = r->len - idx - 1u;
+    if (tail > 0u) {
+        memmove(&r->data[idx], &r->data[idx + 1u], tail * sizeof(int));
+    }
+    --r->len;
+}
+
+static void ref_set(rtest_ref_t *r, size_t idx, int val)
+{
+    r->data[idx] = val;
+}
+
+static void ref_swap_elems(rtest_ref_t *r, size_t i, size_t j)
+{
+    int tmp    = r->data[i];
+    r->data[i] = r->data[j];
+    r->data[j] = tmp;
+}
+
+static void ref_reverse(rtest_ref_t *r)
+{
+    size_t lo = 0u;
+    size_t hi = r->len;
+    while (lo + 1u < hi) {
+        int tmp            = r->data[lo];
+        r->data[lo]        = r->data[hi - 1u];
+        r->data[hi - 1u]   = tmp;
+        ++lo;
+        --hi;
+    }
+}
+
+/* Assert that the vector and reference array have identical content.
+ * Returns early on the first mismatch to avoid flooding the failure log. */
+static void rtest_check_states(cdsa_vec_t *v, const rtest_ref_t *r)
+{
+    if (cdsa_vec_len(v) != r->len) {
+        cdsa_check_failures++;
+        return;
+    }
+    for (size_t k = 0u; k < r->len; ++k) {
+        void *p = NULL;
+        if (cdsa_vec_get(v, k, &p) != CDSA_OK) {
+            cdsa_check_failures++;
+            return;
+        }
+        CHECK_EQ(*(int *)p, r->data[k]);
+    }
+}
+
+static void test_rand_diff(void)
+{
+    rtest_ref_t ref = {0};
+    cdsa_vec_t *v   = NULL;
+    int         val = 0;
+    size_t      idx = 0u;
+    size_t      si  = 0u;
+    size_t      sj  = 0u;
+
+    CHECK_EQ(cdsa_vec_create(sizeof(int), NULL, &v), CDSA_OK);
+    if (v == NULL) {
+        return;
+    }
+
+    g_rng_state = (uint32_t)42;
+
+    for (int iter = 0; iter < RTEST_OPS; ++iter) {
+        uint32_t rng = rng_next();
+
+        switch (rng % 7u) {
+
+        case 0u: /* push */
+            if (ref.len < (size_t)RTEST_MAX_ELEMS) {
+                val = (int)(rng_next() % 1000u);
+                CHECK_EQ(cdsa_vec_push(v, &val), CDSA_OK);
+                ref_push(&ref, val);
+            }
+            break;
+
+        case 1u: /* pop */
+            if (ref.len > 0u) {
+                CHECK_EQ(cdsa_vec_pop(v, NULL), CDSA_OK);
+                ref_pop(&ref);
+            } else {
+                CHECK_EQ(cdsa_vec_pop(v, NULL), CDSA_ERR_EMPTY);
+            }
+            break;
+
+        case 2u: /* insert */
+            if (ref.len < (size_t)RTEST_MAX_ELEMS) {
+                idx = (ref.len > 0u) ? (rng_next() % (ref.len + 1u)) : 0u;
+                val = (int)(rng_next() % 1000u);
+                CHECK_EQ(cdsa_vec_insert(v, idx, &val), CDSA_OK);
+                ref_insert(&ref, idx, val);
+            }
+            break;
+
+        case 3u: /* erase */
+            if (ref.len > 0u) {
+                idx = rng_next() % ref.len;
+                CHECK_EQ(cdsa_vec_erase(v, idx, NULL), CDSA_OK);
+                ref_erase(&ref, idx);
+            } else {
+                CHECK_EQ(cdsa_vec_erase(v, 0u, NULL), CDSA_ERR_RANGE);
+            }
+            break;
+
+        case 4u: /* set */
+            if (ref.len > 0u) {
+                idx = rng_next() % ref.len;
+                val = (int)(rng_next() % 1000u);
+                CHECK_EQ(cdsa_vec_set(v, idx, &val), CDSA_OK);
+                ref_set(&ref, idx, val);
+            }
+            break;
+
+        case 5u: /* swap */
+            if (ref.len >= 2u) {
+                si = rng_next() % ref.len;
+                sj = rng_next() % ref.len;
+                CHECK_EQ(cdsa_vec_swap(v, si, sj), CDSA_OK);
+                ref_swap_elems(&ref, si, sj);
+            }
+            break;
+
+        case 6u: /* reverse */
+            CHECK_EQ(cdsa_vec_reverse(v), CDSA_OK);
+            ref_reverse(&ref);
+            break;
+
+        default:
+            break;
+        }
+
+        rtest_check_states(v, &ref);
+    }
+
+    cdsa_vec_destroy(v);
+}
+
 /* ── Test registry ───────────────────────────────────────────────────────── */
 
 static const cdsa_test_entry_t tests[] = {
@@ -1380,6 +1569,8 @@ static const cdsa_test_entry_t tests[] = {
     CDSA_T(test_reverse_twice_is_identity),
     CDSA_T(test_reverse_large_elem_size),
     CDSA_T(test_reverse_alloc_failure),
+    /* randomized differential test */
+    CDSA_T(test_rand_diff),
 };
 
 int main(void)

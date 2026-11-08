@@ -13,7 +13,7 @@ One task ≈ one day. The agent takes the first unchecked item.
 - [x] Dynamic array (vector): create/destroy/push/pop/get/set, geometric growth
 - [x] Vector: insert/erase at index, reserve, shrink_to_fit, clear
 - [x] Vector: iteration API, foreach macro, swap, reverse
-- [ ] Vector: randomized differential test against a plain C array reference
+- [x] Vector: randomized differential test against a plain C array reference
 - [ ] Singly linked list with sentinel: push/pop front/back, find, remove
 - [ ] Doubly linked list: insert before/after, splice, reverse
 - [ ] Linked list: merge sort on lists, stable, tests with duplicates
