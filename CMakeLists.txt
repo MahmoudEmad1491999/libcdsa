@@ -41,6 +41,7 @@ target_sources(cdsa PRIVATE
     src/cdsa_alloc.c
     src/cdsa_callbacks.c
     src/cdsa_vec.c
+    src/cdsa_slist.c
 )
 target_include_directories(cdsa PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
