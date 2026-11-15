@@ -15,7 +15,7 @@ One task ≈ one day. The agent takes the first unchecked item.
 - [x] Vector: iteration API, foreach macro, swap, reverse
 - [x] Vector: randomized differential test against a plain C array reference
 - [x] Singly linked list with sentinel: push/pop front/back, find, remove
-- [ ] Doubly linked list: insert before/after, splice, reverse
+- [x] Doubly linked list: insert before/after, splice, reverse
 - [ ] Linked list: merge sort on lists, stable, tests with duplicates
 - [ ] Intrusive list (Linux-kernel style `container_of`) + example
 - [ ] Circular ring buffer (power-of-two capacity): push/pop/peek, overwrite mode
